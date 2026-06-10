@@ -1,42 +1,12 @@
-from flask import Flask, render_template, jsonify, request
+from flask import Flask, render_template, jsonify
 import os
 
 app = Flask(__name__)
 app.config['STATIC_FOLDER'] = os.path.join(os.path.dirname(__file__), 'static')
 
-game_scores = []
-
 @app.route('/')
 def index():
     return render_template('index.html')
-
-@app.route('/api/get-scores', methods=['GET'])
-def get_scores():
-    try:
-        return jsonify({
-            'scores': sorted(game_scores, reverse=True)[:10],
-            'total_games': len(game_scores)
-        })
-    except Exception as e:
-        return jsonify({'error': '獲取成績失敗'}), 500
-
-@app.route('/api/save-score', methods=['POST'])
-def save_score():
-    try:
-        data = request.get_json()
-        if not data:
-            return jsonify({'error': '無效的請求數據'}), 400
-        
-        score = data.get('score', 0)
-        game_scores.append(score)
-        
-        return jsonify({
-            'success': True,
-            'message': '成績已保存',
-            'score': score
-        })
-    except Exception as e:
-        return jsonify({'error': '保存成績失敗'}), 500
 
 @app.route('/api/check-music', methods=['GET'])
 def check_music():

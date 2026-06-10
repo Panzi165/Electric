@@ -55,8 +55,10 @@
             cursor: crosshair;
             border-radius: 8px;
             position: relative;
+            width: 684px;
             max-width: 100%;
             height: auto;
+            aspect-ratio: 684 / 450;
         }
 
         .info-panel {
@@ -390,7 +392,7 @@
     <div class="container">
         <h1>電流急急棒遊戲</h1>
 
-        <canvas id="gameCanvas" width="800" height="500"></canvas>
+        <canvas id="gameCanvas" width="684" height="450"></canvas>
 
         <div class="info-panel">
             <div class="info-box">
@@ -485,7 +487,7 @@
             isSuccess: false,
             mouseX: 400,
             mouseY: 250,
-            pathWidth: 30,
+            pathWidth: 30 * 0.95,
             musicData: {
                 background: null,
                 success: null,
@@ -494,14 +496,16 @@
         };
 
         const pathPoints = [
-            { x: 50, y: 400 },
-            { x: 150, y: 250 },
-            { x: 250, y: 100 },
-            { x: 350, y: 200 },
-            { x: 450, y: 350 },
-            { x: 550, y: 120 },
-            { x: 650, y: 280 },
-            { x: 750, y: 150 }
+            { x: 42.75, y: 339 },
+            { x: 111.15, y: 210 },
+            { x: 179.55, y: 420 },
+            { x: 247.95, y: 145 },
+            { x: 307.8, y: 371 },
+            { x: 384.75, y: 97 },
+            { x: 444.6, y: 331 },
+            { x: 521.55, y: 178 },
+            { x: 589.95, y: 420 },
+            { x: 658.35, y: 161 }
         ];
 
         async function checkMusicAvailability() {
@@ -538,20 +542,6 @@
 
             } catch (error) {
                 console.warn('無法檢查音樂文件:', error);
-            }
-        }
-
-        async function saveGameScore(score) {
-            try {
-                await fetch('/api/save-score', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ score: score })
-                });
-            } catch (error) {
-                console.error('保存成績失敗:', error);
             }
         }
 
@@ -664,46 +654,14 @@
         function drawPath() {
             const pathWidth = gameState.pathWidth;
 
-            // 繪製左牆
-            ctx.strokeStyle = '#8B4513';
-            ctx.lineWidth = 15;
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'round';
-            ctx.beginPath();
-            ctx.moveTo(pathPoints[0].x - pathWidth / 2 - 3, pathPoints[0].y);
-            for (let i = 1; i < pathPoints.length; i++) {
-                ctx.lineTo(pathPoints[i].x - pathWidth / 2 - 3, pathPoints[i].y);
-            }
-            ctx.stroke();
-
-            // 繪製右牆
-            ctx.strokeStyle = '#8B4513';
-            ctx.lineWidth = 15;
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'round';
-            ctx.beginPath();
-            ctx.moveTo(pathPoints[0].x + pathWidth / 2 + 3, pathPoints[0].y);
-            for (let i = 1; i < pathPoints.length; i++) {
-                ctx.lineTo(pathPoints[i].x + pathWidth / 2 + 3, pathPoints[i].y);
-            }
-            ctx.stroke();
-
-            // 繪製軌道路線（金色）
-            ctx.strokeStyle = '#FFD700';
-            ctx.lineWidth = pathWidth;
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'round';
-            ctx.beginPath();
-            ctx.moveTo(pathPoints[0].x, pathPoints[0].y);
-            for (let i = 1; i < pathPoints.length; i++) {
-                ctx.lineTo(pathPoints[i].x, pathPoints[i].y);
-            }
-            ctx.stroke();
+            drawSmoothStroke(pathPoints, -pathWidth / 2 - 3, '#8B4513', 15);
+            drawSmoothStroke(pathPoints, pathWidth / 2 + 3, '#8B4513', 15);
+            drawSmoothStroke(pathPoints, 0, '#FFD700', pathWidth);
 
             // 繪製起點
             ctx.fillStyle = '#28a745';
             ctx.beginPath();
-            ctx.arc(pathPoints[0].x, pathPoints[0].y, 12, 0, Math.PI * 2);
+            ctx.arc(pathPoints[0].x, pathPoints[0].y, 12 * 0.95, 0, Math.PI * 2);
             ctx.fill();
             ctx.strokeStyle = '#fff';
             ctx.lineWidth = 2;
@@ -712,10 +670,33 @@
             // 繪製終點
             ctx.fillStyle = '#ffc107';
             ctx.beginPath();
-            ctx.arc(pathPoints[pathPoints.length - 1].x, pathPoints[pathPoints.length - 1].y, 12, 0, Math.PI * 2);
+            ctx.arc(pathPoints[pathPoints.length - 1].x, pathPoints[pathPoints.length - 1].y, 12 * 0.95, 0, Math.PI * 2);
             ctx.fill();
             ctx.strokeStyle = '#000';
             ctx.lineWidth = 2;
+            ctx.stroke();
+        }
+
+        function drawSmoothStroke(points, offsetX, strokeStyle, lineWidth) {
+            ctx.strokeStyle = strokeStyle;
+            ctx.lineWidth = lineWidth;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.beginPath();
+            ctx.moveTo(points[0].x + offsetX, points[0].y);
+
+            for (let i = 1; i < points.length - 1; i++) {
+                const current = { x: points[i].x + offsetX, y: points[i].y };
+                const next = { x: points[i + 1].x + offsetX, y: points[i + 1].y };
+                const mid = {
+                    x: (current.x + next.x) / 2,
+                    y: (current.y + next.y) / 2
+                };
+                ctx.quadraticCurveTo(current.x, current.y, mid.x, mid.y);
+            }
+
+            const last = { x: points[points.length - 1].x + offsetX, y: points[points.length - 1].y };
+            ctx.lineTo(last.x, last.y);
             ctx.stroke();
         }
 
@@ -739,13 +720,13 @@
 
             ctx.lineWidth = 3;
             ctx.beginPath();
-            ctx.arc(gameState.mouseX, gameState.mouseY, 15, 0, Math.PI * 2);
+            ctx.arc(gameState.mouseX, gameState.mouseY, 15 * 0.95, 0, Math.PI * 2);
             ctx.fill();
             ctx.stroke();
 
             ctx.fillStyle = '#fff';
             ctx.beginPath();
-            ctx.arc(gameState.mouseX, gameState.mouseY, 8, 0, Math.PI * 2);
+            ctx.arc(gameState.mouseX, gameState.mouseY, 8 * 0.95, 0, Math.PI * 2);
             ctx.fill();
         }
 
@@ -767,7 +748,7 @@
             // 檢查是否到達終點
             const endPoint = pathPoints[pathPoints.length - 1];
             const distToEnd = Math.sqrt((gameState.mouseX - endPoint.x) ** 2 + (gameState.mouseY - endPoint.y) ** 2);
-            if (distToEnd < 25) {
+            if (distToEnd < 25 * 0.95) {
                 gameState.isSuccess = true;
                 
                 // 停止背景音樂，延遲 0.5 秒後撥放勝利音樂
@@ -775,10 +756,6 @@
                 setTimeout(() => {
                     playSuccessMusic();
                 }, 500);
-                
-                // 保存成績
-                const finalScore = Math.round(pathInfo.progress);
-                saveGameScore(finalScore);
                 
                 // 顯示成功 Modal
                 showStatusModal('success', '✓ 成功！');
@@ -909,14 +886,30 @@
             if (statusModalContainer.classList.contains('show')) {
                 return;
             }
-            
+
             if (!gameState.isPlaying && !gameState.isFailed && !gameState.isSuccess) {
-                gameState.isPlaying = true;
-                statusDiv.textContent = '✓ 遊戲進行中...小心不要碰到牆壁！';
-                statusDiv.className = 'status playing';
-                
-                // 開始撥放背景音樂
-                playBackgroundMusic();
+                const rect = canvas.getBoundingClientRect();
+                const clickX = e.clientX - rect.left;
+                const clickY = e.clientY - rect.top;
+                const startPoint = pathPoints[0];
+                const distToStart = Math.sqrt((clickX - startPoint.x) ** 2 + (clickY - startPoint.y) ** 2);
+
+                // 只有點擊綠色起點才能開始遊戲
+                if (distToStart <= 20 * 0.95) {
+                    gameState.isPlaying = true;
+                    statusDiv.textContent = '✓ 遊戲進行中...小心不要碰到牆壁！';
+                    statusDiv.className = 'status playing';
+
+                    gameState.mouseX = startPoint.x;
+                    gameState.mouseY = startPoint.y;
+                    progressDiv.textContent = '0%';
+
+                    // 開始撥放背景音樂
+                    playBackgroundMusic();
+                } else {
+                    statusDiv.textContent = '請點擊綠色起點開始遊戲';
+                    statusDiv.className = 'status playing';
+                }
             }
         });
 
