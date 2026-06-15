@@ -508,6 +508,39 @@
             { x: 658.35, y: 161 }
         ];
 
+        const collisionPathPoints = buildSmoothCollisionPath(pathPoints);
+
+        function getQuadraticPoint(p0, p1, p2, t) {
+            const oneMinusT = 1 - t;
+            return {
+                x: oneMinusT * oneMinusT * p0.x + 2 * oneMinusT * t * p1.x + t * t * p2.x,
+                y: oneMinusT * oneMinusT * p0.y + 2 * oneMinusT * t * p1.y + t * t * p2.y
+            };
+        }
+
+        function buildSmoothCollisionPath(points, samplesPerSegment = 12) {
+            if (points.length < 2) return points.map(p => ({ x: p.x, y: p.y }));
+
+            const collisionPoints = [{ x: points[0].x, y: points[0].y }];
+            for (let i = 1; i < points.length - 1; i++) {
+                const current = points[i];
+                const next = points[i + 1];
+                const segmentEnd = {
+                    x: (current.x + next.x) / 2,
+                    y: (current.y + next.y) / 2
+                };
+
+                const startPoint = collisionPoints[collisionPoints.length - 1];
+                for (let step = 1; step <= samplesPerSegment; step++) {
+                    const t = step / samplesPerSegment;
+                    collisionPoints.push(getQuadraticPoint(startPoint, current, segmentEnd, t));
+                }
+            }
+
+            collisionPoints.push({ x: points[points.length - 1].x, y: points[points.length - 1].y });
+            return collisionPoints;
+        }
+
         async function checkMusicAvailability() {
             try {
                 const response = await fetch('/api/check-music');
@@ -549,11 +582,14 @@
             let minDistance = Infinity;
             let closestSegment = null;
             let closestPoint = null;
-            let progressPercentage = 0;
+            let progressLength = 0;
+            let totalLength = 0;
+            let traveledLength = 0;
 
-            for (let i = 0; i < pathPoints.length - 1; i++) {
-                const p1 = pathPoints[i];
-                const p2 = pathPoints[i + 1];
+            for (let i = 0; i < collisionPathPoints.length - 1; i++) {
+                const p1 = collisionPathPoints[i];
+                const p2 = collisionPathPoints[i + 1];
+                const segmentLength = Math.sqrt((p2.x - p1.x) ** 2 + (p2.y - p1.y) ** 2);
 
                 const distance = distancePointToSegment(x, y, p1.x, p1.y, p2.x, p2.y);
                 const point = closestPointOnSegment(x, y, p1.x, p1.y, p2.x, p2.y);
@@ -562,14 +598,14 @@
                     minDistance = distance;
                     closestSegment = { p1, p2, index: i };
                     closestPoint = point;
-                    
-                    const totalSegments = pathPoints.length - 1;
-                    const currentProgress = i / totalSegments;
-                    const segmentLength = Math.sqrt((p2.x - p1.x) ** 2 + (p2.y - p1.y) ** 2);
-                    const pointLength = Math.sqrt((point.x - p1.x) ** 2 + (point.y - p1.y) ** 2);
-                    progressPercentage = (currentProgress + (pointLength / segmentLength) / totalSegments) * 100;
+                    progressLength = traveledLength + Math.sqrt((point.x - p1.x) ** 2 + (point.y - p1.y) ** 2);
                 }
+
+                traveledLength += segmentLength;
             }
+
+            totalLength = traveledLength;
+            const progressPercentage = totalLength > 0 ? Math.min((progressLength / totalLength) * 100, 100) : 0;
 
             return {
                 distance: minDistance,
